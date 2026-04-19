@@ -1,0 +1,22 @@
+{
+  "name": "textwatch",
+  "author": "stough",
+  "version": "2.0.0",
+  "keywords": ["pebble-app"],
+  "pebble": {
+    "uuid": "496e04ad-132a-48ab-b165-7ff4a99872d2",
+    "displayName": "Text and Date",
+    "companyName": "stough",
+    "versionLabel": "2.0",
+    "sdkVersion": "3",
+    "targetPlatforms": ["aplite", "basalt", "chalk", "diorite", "emery"],
+    "watchapp": {
+      "watchface": true
+    },
+    "resources": {
+      "media": []
+    },
+    "messageKeys": []
+  },
+  "dependencies": {}
+}
