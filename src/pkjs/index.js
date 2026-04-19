@@ -27,7 +27,9 @@ var CONFIG_HTML = [
     'input[type=checkbox]{width:44px;height:28px;cursor:pointer;flex-shrink:0}',
     'button{display:block;width:100%;padding:14px;margin-top:20px;',
     'background:#5b9bd5;color:#fff;border:0;border-radius:6px;font-size:16px;cursor:pointer}',
-    '</style></head><body>',
+    '</style>',
+    '__SETTINGS_SCRIPT__',
+    '</head><body>',
     '<h2>Text Watch</h2>',
     '<div class="row"><label>Render \u201coh\u201d for zero minutes</label><input type="checkbox" id="oh"></div>',
     '<div class="row"><label>Date separator line</label><input type="checkbox" id="sep"></div>',
@@ -36,32 +38,38 @@ var CONFIG_HTML = [
     '<button onclick="save()">Save</button>',
     '<script>',
     '(function(){',
-    'var s={};',
-    'try{s=JSON.parse(decodeURIComponent(location.hash.slice(1)));}catch(e){}',
-    'document.getElementById("oh").checked =s.TimeRenderOh      !==0;',
+    'var s=window.INIT||{};',
+    'document.getElementById("oh").checked =s.TimeRenderOh        !==0;',
     'document.getElementById("sep").checked=!!s.DateSeparatorLine;',
     'document.getElementById("oj").checked =s.DateOutsideJustified!==0;',
-    'document.getElementById("us").checked =s.DateFormatUS       !==0;',
+    'document.getElementById("us").checked =s.DateFormatUS         !==0;',
     '})();',
     'function save(){',
     'var c={',
-    'TimeRenderOh:          +document.getElementById("oh").checked,',
-    'DateSeparatorLine:     +document.getElementById("sep").checked,',
-    'DateOutsideJustified:  +document.getElementById("oj").checked,',
-    'DateFormatUS:          +document.getElementById("us").checked',
+    'TimeRenderOh:         +document.getElementById("oh").checked,',
+    'DateSeparatorLine:    +document.getElementById("sep").checked,',
+    'DateOutsideJustified: +document.getElementById("oj").checked,',
+    'DateFormatUS:         +document.getElementById("us").checked',
     '};',
     'location.href="pebblejs://close#"+encodeURIComponent(JSON.stringify(c));',
     '}',
     '<\/script></body></html>'
 ].join('');
 
+function buildConfigUrl(settings) {
+    var script = '<script>window.INIT=' + JSON.stringify(settings) + ';<\/script>';
+    var html = CONFIG_HTML.replace('__SETTINGS_SCRIPT__', script);
+    // Blob URLs work in CloudPebble (browser context) and bypass data: URI blocks
+    if (typeof Blob !== 'undefined' && typeof URL !== 'undefined' && URL.createObjectURL) {
+        return URL.createObjectURL(new Blob([html], {type: 'text/html'}));
+    }
+    return 'data:text/html,' + encodeURIComponent(html);
+}
+
 Pebble.addEventListener('ready', function () {});
 
 Pebble.addEventListener('showConfiguration', function () {
-    var settings = getSettings();
-    var url = 'data:text/html,' + encodeURIComponent(CONFIG_HTML) +
-              '#' + encodeURIComponent(JSON.stringify(settings));
-    Pebble.openURL(url);
+    Pebble.openURL(buildConfigUrl(getSettings()));
 });
 
 Pebble.addEventListener('webviewclosed', function (e) {
