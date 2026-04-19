@@ -7,9 +7,9 @@
     "uuid": "496e04ad-132a-48ab-b165-7ff4a99872d2",
     "displayName": "Text and Date",
     "companyName": "stough",
-    "versionLabel": "2.0",
+    "versionLabel": "3.0",
     "sdkVersion": "3",
-    "targetPlatforms": ["aplite", "basalt", "chalk", "diorite", "emery"],
+    "targetPlatforms": ["aplite", "basalt", "diorite", "emery", "flint"],
     "watchapp": {
       "watchface": true
     },
