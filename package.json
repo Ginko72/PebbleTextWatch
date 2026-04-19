@@ -14,10 +14,16 @@
       "_comment": "Set watchface to false and DEBUG=1 in main.c for time travel, else true",
       "watchface": true
     },
+    "capabilities": ["configurable"],
     "resources": {
       "media": []
     },
-    "messageKeys": []
+    "messageKeys": [
+      "TimeRenderOh",
+      "DateSeparatorLine",
+      "DateOutsideJustified",
+      "DateFormatUS"
+    ]
   },
   "dependencies": {}
 }

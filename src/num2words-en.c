@@ -68,7 +68,7 @@ static size_t append_number(char *words, size_t length, size_t pos, int num, sho
   return p;
 }
 
-void time_to_words(int hours, int minutes, char *words, size_t length) {
+void time_to_words(int hours, int minutes, char *words, size_t length, bool oh) {
   size_t pos = 0;
 
   if (hours == 0 || hours == 12) {
@@ -78,13 +78,13 @@ void time_to_words(int hours, int minutes, char *words, size_t length) {
   }
 
   pos = append_string(words, length, pos, " ");
-  pos = append_number(words, length, pos, minutes, TimeRenderOh);
+  pos = append_number(words, length, pos, minutes, oh);
   pos = append_string(words, length, pos, " ");
 }
 
-void time_to_3words(int hours, int minutes, char *line1, char *line2, char *line3, size_t length, bool split_teens) {
+void time_to_3words(int hours, int minutes, char *line1, char *line2, char *line3, size_t length, bool split_teens, bool oh) {
   static char value[BUFFER_SIZE];
-  time_to_words(hours, minutes, value, length);
+  time_to_words(hours, minutes, value, length, oh);
 
   memset(line1, 0, length);
   memset(line2, 0, length);

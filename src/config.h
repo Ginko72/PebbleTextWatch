@@ -2,30 +2,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-////////////////////////////////////
-// Buffer size for all word/date string buffers
-#define BUFFER_SIZE 44
-
-////////////////////////////////////
-// Watch Face Variants
-#define TimeRenderOh         true
-#define DateSeparatorLine    false
-#define DateOutsideJustified true
-#define DateFormatUS         true
-////////////////////////////////////
-
-#if DateFormatUS
-#define DateFormat "%m.%d"
-#else
-#define DateFormat "%d.%m"
-#endif
-
-#if DateOutsideJustified
-#define DateTruncTo2Char false
-#else
-#define DateTruncTo2Char true
-#endif
-
 // ---------------------------------------------------------------------------
 // Layout configuration — populated at runtime by layout_config_init()
 // ---------------------------------------------------------------------------
