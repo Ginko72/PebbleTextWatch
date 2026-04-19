@@ -1,5 +1,6 @@
 #include "num2words-en.h"
-#include "string.h"
+#include <string.h>
+#include <stdio.h>
 #include "config.h"
 
 static const char* const ONES[] = {
@@ -24,7 +25,7 @@ static const char* const TEENS[] = {
   "fifteen",
   "sixteen",
   "seventeen",
-  "eightteen",
+  "eighteen",
   "nineteen"
 };
 
@@ -41,50 +42,48 @@ static const char* const TENS[] = {
   "ninety"
 };
 
-static size_t append_string(char *buffer, size_t remaining, const char *str) {
-  if (remaining == 0) return 0;
-  size_t len = strlen(str);
-  strncat(buffer, str, remaining - 1);
-  return (len < remaining) ? len : remaining - 1;
+static size_t append_string(char *buffer, size_t length, size_t pos, const char *str) {
+  if (pos >= length - 1) return pos;
+  int written = snprintf(buffer + pos, length - pos, "%s", str);
+  return (written >= 0) ? pos + written : pos;
 }
 
-static size_t append_number(char *words, size_t remaining, int num, short oh) {
+static size_t append_number(char *words, size_t length, size_t pos, int num, short oh) {
   int tens_val = num / 10 % 10;
   int ones_val = num % 10;
-  size_t written = 0;
-
+  size_t p = pos;
+  
   if (tens_val == 1 && num != 10) {
-    return append_string(words, remaining, TEENS[ones_val]);
+    return append_string(words, length, p, TEENS[ones_val]);
   }
   if ((num != 0) && ((tens_val != 0) || oh)) {
-    written += append_string(words, remaining - written, TENS[tens_val]);
+    p = append_string(words, length, p, TENS[tens_val]);
     if (ones_val > 0) {
-      written += append_string(words, remaining - written, " ");
+      p = append_string(words, length, p, " ");
     }
   }
   if (ones_val > 0 || num == 0) {
-    written += append_string(words, remaining - written, ONES[ones_val]);
+    p = append_string(words, length, p, ONES[ones_val]);
   }
-  return written;
+  return p;
 }
 
 void time_to_words(int hours, int minutes, char *words, size_t length) {
-  size_t remaining = length;
-  memset(words, 0, length);
+  size_t pos = 0;
 
   if (hours == 0 || hours == 12) {
-    remaining -= append_string(words, remaining, TEENS[2]);
+    pos = append_string(words, length, pos, TEENS[2]);
   } else {
-    remaining -= append_number(words, remaining, hours % 12, false);
+    pos = append_number(words, length, pos, hours % 12, false);
   }
 
-  remaining -= append_string(words, remaining, " ");
-  remaining -= append_number(words, remaining, minutes, TimeRenderOh);
-  remaining -= append_string(words, remaining, " ");
+  pos = append_string(words, length, pos, " ");
+  pos = append_number(words, length, pos, minutes, TimeRenderOh);
+  pos = append_string(words, length, pos, " ");
 }
 
 void time_to_3words(int hours, int minutes, char *line1, char *line2, char *line3, size_t length, bool split_teens) {
-  char value[BUFFER_SIZE];
+  static char value[BUFFER_SIZE];
   time_to_words(hours, minutes, value, length);
 
   memset(line1, 0, length);
@@ -113,8 +112,14 @@ void time_to_3words(int hours, int minutes, char *line1, char *line2, char *line
           (strstr(line2, "six")  != 0))) {
       char *teen = strstr(line2, "teen");
       if (teen) {
-        memcpy(line3, teen, 4);
-        teen[0] = 0;
+        if (strcmp(line2, "eighteen") == 0) {
+          // Special case: split "eighteen" into "eight" and "teen"
+          memcpy(line3, teen, 4);
+          line2[5] = 0; 
+        } else {
+          memcpy(line3, teen, 4);
+          teen[0] = 0;
+        }
       }
     }
   }
