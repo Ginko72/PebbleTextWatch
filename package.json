@@ -2,19 +2,30 @@
   "name": "textwatch",
   "author": "stough",
   "version": "3.0.0",
-  "keywords": ["pebble-app"],
+  "keywords": [
+    "pebble-app"
+  ],
   "pebble": {
     "uuid": "496e04ad-132a-48ab-b165-7ff4a99872d2",
     "displayName": "Text and Date",
     "companyName": "stough",
     "versionLabel": "3.0",
     "sdkVersion": "3",
-    "targetPlatforms": ["aplite", "basalt", "diorite", "emery", "flint"],
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "aplite",
+      "basalt",
+      "diorite",
+      "emery",
+      "flint"
+    ],
     "watchapp": {
       "_comment": "Set watchface to false and DEBUG=1 in main.c for time travel, else true",
       "watchface": true
     },
-    "capabilities": ["configurable"],
+    "capabilities": [
+      "configurable"
+    ],
     "resources": {
       "media": []
     },
@@ -25,5 +36,7 @@
       "DateFormatUS"
     ]
   },
-  "dependencies": {}
+  "dependencies": {
+    "@rebble/clay": "^1.0.8"
+  }
 }
