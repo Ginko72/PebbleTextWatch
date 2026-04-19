@@ -3,44 +3,62 @@
 #include "num2words-en.h"
 #include "config.h"
 
+#ifndef DEBUG
 #define DEBUG false
-#define BUFFER_SIZE 44
+#endif
 
 // ---------------------------------------------------------------------------
 // Layout
 // ---------------------------------------------------------------------------
 
 static void layout_config_init(LayoutConfig *cfg, GRect bounds) {
-    cfg->screen_width    = bounds.size.w;
-    cfg->line_height     = 50;
-    cfg->line_spacing    = 37;
-    cfg->line1_y         = 0;
-    cfg->line2_y         = cfg->line_spacing;
-    cfg->line3_y         = 2 * cfg->line_spacing;
-    cfg->weekday_y       = bounds.size.h - 45;   // 45px up from bottom
-    cfg->date_y          = cfg->weekday_y + 8;
-    cfg->sep_y           = bounds.size.h - 40;   // 40px up from bottom
-    cfg->sep_inset       = 10;
-    cfg->anim_duration   = 400;
-    cfg->time_bold_font  = FONT_KEY_BITHAM_42_BOLD;
-    cfg->time_light_font = FONT_KEY_BITHAM_42_LIGHT;
-    cfg->date_font       = FONT_KEY_BITHAM_34_MEDIUM_NUMBERS;
+    cfg->screen_width  = bounds.size.w;
+    cfg->anim_duration = 400;
+    cfg->sep_inset     = 10;
 
+    // Scale font, line metrics, and bottom anchors by screen width
+    if (bounds.size.w >= 200) {
+        // emery: 200 × 228
+        cfg->line_height     = 60;
+        cfg->line_spacing    = 51;
+        cfg->weekday_y       = bounds.size.h - 55;
+        cfg->sep_y           = bounds.size.h - 50;
+        cfg->time_bold_font  = FONT_KEY_BITHAM_42_BOLD;
+        cfg->time_light_font = FONT_KEY_BITHAM_42_LIGHT;
+        cfg->date_font       = FONT_KEY_BITHAM_34_MEDIUM_NUMBERS;
+    } else {
+        // aplite, basalt, diorite, flint: 144 × 168
+        cfg->line_height     = 50;
+        cfg->line_spacing    = 37;
+        cfg->weekday_y       = bounds.size.h - 45;
+        cfg->sep_y           = bounds.size.h - 40;
+        cfg->time_bold_font  = FONT_KEY_BITHAM_42_BOLD;
+        cfg->time_light_font = FONT_KEY_BITHAM_42_LIGHT;
+        cfg->date_font       = FONT_KEY_BITHAM_34_MEDIUM_NUMBERS;
+    }
+
+    cfg->line1_y = 0;
+    cfg->line2_y = cfg->line_spacing;
+    cfg->line3_y = 2 * cfg->line_spacing;
+    cfg->date_y  = cfg->weekday_y + 8;
+
+    // Scale the weekday/date column split proportionally to screen width
+    int16_t w = bounds.size.w;
 #if DateOutsideJustified
     // Weekday left-justified, date right-justified
     cfg->weekday_x     = 0;
-    cfg->weekday_w     = 72;
+    cfg->weekday_w     = w / 2;
     cfg->weekday_right = false;
-    cfg->date_x        = 64;
-    cfg->date_w        = 79;
+    cfg->date_x        = w * 44 / 100;   // slight overlap mirrors original 64/144
+    cfg->date_w        = w - cfg->date_x;
     cfg->date_right    = true;
 #else
     // Weekday right-justified, date left-justified
     cfg->weekday_x     = 0;
-    cfg->weekday_w     = 61;
+    cfg->weekday_w     = w * 42 / 100;   // mirrors original 61/144
     cfg->weekday_right = true;
-    cfg->date_x        = 65;
-    cfg->date_w        = 79;
+    cfg->date_x        = w * 45 / 100;   // mirrors original 65/144
+    cfg->date_w        = w - cfg->date_x;
     cfg->date_right    = false;
 #endif
 }
@@ -192,7 +210,7 @@ void display_time(struct tm *t) {
     char textLine4[BUFFER_SIZE];
     char textLine5[BUFFER_SIZE];
 
-    time_to_3words(t->tm_hour, t->tm_min, textLine1, textLine2, textLine3, BUFFER_SIZE);
+    time_to_3words(t->tm_hour, t->tm_min, textLine1, textLine2, textLine3, BUFFER_SIZE, layout.screen_width < 200);
     day_of_week(t, textLine4, BUFFER_SIZE);
     date_to_string(t, textLine5, BUFFER_SIZE);
 
@@ -214,7 +232,7 @@ void display_time(struct tm *t) {
 
 // Set the initial display without animation
 void display_initial_time(struct tm *t) {
-    time_to_3words(t->tm_hour, t->tm_min, line1Str[0], line2Str[0], line3Str[0], BUFFER_SIZE);
+    time_to_3words(t->tm_hour, t->tm_min, line1Str[0], line2Str[0], line3Str[0], BUFFER_SIZE, layout.screen_width < 200);
     day_of_week(t, line4Str[0], BUFFER_SIZE);
     date_to_string(t, line5Str[0], BUFFER_SIZE);
 
@@ -336,11 +354,15 @@ static void handle_init(void) {
     window_set_click_config_provider(window, click_config_provider);
 #endif
 
+#if !DEBUG
     tick_timer_service_subscribe(MINUTE_UNIT, handle_minute_tick);
+#endif
 }
 
 static void handle_deinit(void) {
+#if !DEBUG
     tick_timer_service_unsubscribe();
+#endif
 
     text_layer_destroy(line1.currentLayer);
     text_layer_destroy(line1.nextLayer);

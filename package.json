@@ -11,6 +11,7 @@
     "sdkVersion": "3",
     "targetPlatforms": ["aplite", "basalt", "diorite", "emery", "flint"],
     "watchapp": {
+      "_comment": "Set watchface to false and DEBUG=1 in main.c for time travel, else true",
       "watchface": true
     },
     "resources": {
