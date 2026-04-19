@@ -52,7 +52,6 @@ static void layout_config_init(LayoutConfig *cfg, GRect bounds) {
     cfg->date_y  = cfg->weekday_y + 8;
 
     // Scale the weekday/date column split proportionally to screen width
-    int16_t w = bounds.size.w;
 #if DateOutsideJustified
     // Weekday left-justified, date right-justified
     cfg->weekday_x     = 0;
