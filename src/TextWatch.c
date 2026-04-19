@@ -16,14 +16,11 @@ static void layout_config_init(LayoutConfig *cfg, GRect bounds) {
 
     if (bounds.size.h > 168) {
         // Emery (200x228) specific spacing
-        cfg->line_height     = 66;
-        cfg->line_spacing    = 52;
-        cfg->line1_y         = 0;
-        cfg->line2_y         = cfg->line1_y + cfg->line_spacing;
-        cfg->line3_y         = cfg->line1_y + 2 * cfg->line_spacing;
-        cfg->weekday_y       = bounds.size.h - 52;
+        cfg->line_height     = 50;
+        cfg->line_spacing    = 45;
+        cfg->weekday_y       = bounds.size.h - 52;   // 52px up from bottom
         cfg->date_y          = cfg->weekday_y + 10;
-        cfg->sep_y           = bounds.size.h - 46;
+        cfg->sep_y           = bounds.size.h - 46;   // 46px up from bottom
         cfg->sep_inset       = 14;
         cfg->anim_duration   = 400;
         cfg->time_bold_font  = FONT_KEY_BITHAM_42_BOLD;
@@ -33,9 +30,6 @@ static void layout_config_init(LayoutConfig *cfg, GRect bounds) {
         // Standard (144x168) spacing
         cfg->line_height     = 50;
         cfg->line_spacing    = 37;
-        cfg->line1_y         = 0;
-        cfg->line2_y         = cfg->line_spacing;
-        cfg->line3_y         = 2 * cfg->line_spacing;
         cfg->weekday_y       = bounds.size.h - 45;   // 45px up from bottom
         cfg->date_y          = cfg->weekday_y + 8;
         cfg->sep_y           = bounds.size.h - 40;   // 40px up from bottom
@@ -47,9 +41,8 @@ static void layout_config_init(LayoutConfig *cfg, GRect bounds) {
     }
 
     cfg->line1_y = 0;
-    cfg->line2_y = cfg->line_spacing;
-    cfg->line3_y = 2 * cfg->line_spacing;
-    cfg->date_y  = cfg->weekday_y + 8;
+    cfg->line2_y = cfg->line1_y + cfg->line_spacing;
+    cfg->line3_y = cfg->line2_y + cfg->line_spacing;
 
     // Scale the weekday/date column split proportionally to screen width
 #if DateOutsideJustified
@@ -184,8 +177,9 @@ bool needToUpdateLine(Line *line, char lineStr[2][BUFFER_SIZE], char *nextValue)
 void date_to_string(struct tm *t, char *line, size_t length) {
     memset(line, 0, length);
     strftime(line, length, DateFormat, t);
-    if (line[3] == '0') memmove(&line[3], &line[4], length - 4);
-    if (line[0] == '0') memmove(&line[0], &line[1], length - 1);
+    size_t len = strlen(line);
+    if (len > 4 && line[3] == '0') memmove(&line[3], &line[4], len - 3);
+    if (line[0] == '0') memmove(line, line + 1, strlen(line));
 }
 
 // Format the weekday abbreviation as a lowercase displayable string
@@ -375,6 +369,7 @@ static void handle_deinit(void) {
 #if !DEBUG
     tick_timer_service_unsubscribe();
 #endif
+    animation_unschedule_all();
 
     text_layer_destroy(line1.currentLayer);
     text_layer_destroy(line1.nextLayer);

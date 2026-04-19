@@ -94,6 +94,7 @@ void time_to_3words(int hours, int minutes, char *line1, char *line2, char *line
   char *pch = strstr(start, " ");
   while (pch != NULL) {
     size_t word_len = (size_t)(pch - start);
+    if (word_len >= length) word_len = length - 1;
     if (line1[0] == 0) {
       memcpy(line1, start, word_len);
     } else if (line2[0] == 0) {
@@ -106,20 +107,19 @@ void time_to_3words(int hours, int minutes, char *line1, char *line2, char *line
   }
 
   // On narrow screens, split long teen words (e.g. "seventeen" → "seven"/"teen")
-  if (split_teens && strstr(line2, "teen") != 0) {
+  char *teen = strstr(line2, "teen");
+  if (split_teens && teen != NULL) {
     if (!((strstr(line2, "thir") != 0) ||
           (strstr(line2, "fif")  != 0) ||
           (strstr(line2, "six")  != 0))) {
-      char *teen = strstr(line2, "teen");
-      if (teen) {
-        if (strcmp(line2, "eighteen") == 0) {
-          // Special case: split "eighteen" into "eight" and "teen"
-          memcpy(line3, teen, 4);
-          line2[5] = 0; 
-        } else {
-          memcpy(line3, teen, 4);
-          teen[0] = 0;
-        }
+      size_t copy_len = length > 4 ? 4 : length - 1;
+      if (strcmp(line2, "eighteen") == 0) {
+        // Special case: split "eighteen" into "eight" and "teen"
+        memcpy(line3, teen, copy_len);
+        line2[5] = 0;
+      } else {
+        memcpy(line3, teen, copy_len);
+        teen[0] = 0;
       }
     }
   }
