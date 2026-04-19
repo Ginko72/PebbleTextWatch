@@ -1,7 +1,7 @@
 {
   "name": "textwatch",
   "author": "stough",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "keywords": ["pebble-app"],
   "pebble": {
     "uuid": "496e04ad-132a-48ab-b165-7ff4a99872d2",
