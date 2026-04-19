@@ -49,3 +49,4 @@ ehthumbs.db
 Thumbs.db
 
 .claude/settings.local.json
+.vscode/settings.json
