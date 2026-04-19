@@ -3,9 +3,6 @@
 #include <stdio.h>
 #include "config.h"
 
-// Options
-#define DEBUG false
-
 static const char* const ONES[] = {
   "o'clock",
   "one",
@@ -19,7 +16,7 @@ static const char* const ONES[] = {
   "nine"
 };
 
-static const char* const TEENS[] ={
+static const char* const TEENS[] = {
   "",
   "eleven",
   "twelve",
@@ -65,7 +62,6 @@ static size_t append_number(char *words, size_t length, size_t pos, int num, sho
       p = append_string(words, length, p, " ");
     }
   }
-
   if (ones_val > 0 || num == 0) {
     p = append_string(words, length, p, ONES[ones_val]);
   }

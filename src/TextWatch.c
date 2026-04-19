@@ -3,7 +3,9 @@
 #include "num2words-en.h"
 #include "config.h"
 
+#ifndef DEBUG
 #define DEBUG false
+#endif
 
 // ---------------------------------------------------------------------------
 // Layout
@@ -44,6 +46,13 @@ static void layout_config_init(LayoutConfig *cfg, GRect bounds) {
         cfg->date_font       = FONT_KEY_BITHAM_34_MEDIUM_NUMBERS;
     }
 
+    cfg->line1_y = 0;
+    cfg->line2_y = cfg->line_spacing;
+    cfg->line3_y = 2 * cfg->line_spacing;
+    cfg->date_y  = cfg->weekday_y + 8;
+
+    // Scale the weekday/date column split proportionally to screen width
+    int16_t w = bounds.size.w;
 #if DateOutsideJustified
     // Weekday left-justified, date right-justified
     cfg->weekday_x     = 0;
@@ -358,11 +367,15 @@ static void handle_init(void) {
     window_set_click_config_provider(window, click_config_provider);
 #endif
 
+#if !DEBUG
     tick_timer_service_subscribe(MINUTE_UNIT, handle_minute_tick);
+#endif
 }
 
 static void handle_deinit(void) {
+#if !DEBUG
     tick_timer_service_unsubscribe();
+#endif
 
     text_layer_destroy(line1.currentLayer);
     text_layer_destroy(line1.nextLayer);
