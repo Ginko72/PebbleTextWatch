@@ -4,7 +4,6 @@
 #include "config.h"
 
 #define DEBUG false
-#define BUFFER_SIZE 44
 
 // ---------------------------------------------------------------------------
 // Layout
@@ -12,35 +11,54 @@
 
 static void layout_config_init(LayoutConfig *cfg, GRect bounds) {
     cfg->screen_width    = bounds.size.w;
-    cfg->line_height     = 50;
-    cfg->line_spacing    = 37;
-    cfg->line1_y         = 0;
-    cfg->line2_y         = cfg->line_spacing;
-    cfg->line3_y         = 2 * cfg->line_spacing;
-    cfg->weekday_y       = bounds.size.h - 45;   // 45px up from bottom
-    cfg->date_y          = cfg->weekday_y + 8;
-    cfg->sep_y           = bounds.size.h - 40;   // 40px up from bottom
-    cfg->sep_inset       = 10;
-    cfg->anim_duration   = 400;
-    cfg->time_bold_font  = FONT_KEY_BITHAM_42_BOLD;
-    cfg->time_light_font = FONT_KEY_BITHAM_42_LIGHT;
-    cfg->date_font       = FONT_KEY_BITHAM_34_MEDIUM_NUMBERS;
+
+    if (bounds.size.h > 168) {
+        // Emery (200x228) specific spacing
+        cfg->line_height     = 66;
+        cfg->line_spacing    = 52;
+        cfg->line1_y         = 0;
+        cfg->line2_y         = cfg->line1_y + cfg->line_spacing;
+        cfg->line3_y         = cfg->line1_y + 2 * cfg->line_spacing;
+        cfg->weekday_y       = bounds.size.h - 52;
+        cfg->date_y          = cfg->weekday_y + 10;
+        cfg->sep_y           = bounds.size.h - 46;
+        cfg->sep_inset       = 14;
+        cfg->anim_duration   = 400;
+        cfg->time_bold_font  = FONT_KEY_BITHAM_42_BOLD;
+        cfg->time_light_font = FONT_KEY_BITHAM_42_LIGHT;
+        cfg->date_font       = FONT_KEY_BITHAM_34_MEDIUM_NUMBERS;
+    } else {
+        // Standard (144x168) spacing
+        cfg->line_height     = 50;
+        cfg->line_spacing    = 37;
+        cfg->line1_y         = 0;
+        cfg->line2_y         = cfg->line_spacing;
+        cfg->line3_y         = 2 * cfg->line_spacing;
+        cfg->weekday_y       = bounds.size.h - 45;   // 45px up from bottom
+        cfg->date_y          = cfg->weekday_y + 8;
+        cfg->sep_y           = bounds.size.h - 40;   // 40px up from bottom
+        cfg->sep_inset       = 10;
+        cfg->anim_duration   = 400;
+        cfg->time_bold_font  = FONT_KEY_BITHAM_42_BOLD;
+        cfg->time_light_font = FONT_KEY_BITHAM_42_LIGHT;
+        cfg->date_font       = FONT_KEY_BITHAM_34_MEDIUM_NUMBERS;
+    }
 
 #if DateOutsideJustified
     // Weekday left-justified, date right-justified
     cfg->weekday_x     = 0;
-    cfg->weekday_w     = 72;
+    cfg->weekday_w     = cfg->screen_width / 2;
     cfg->weekday_right = false;
-    cfg->date_x        = 64;
-    cfg->date_w        = 79;
+    cfg->date_x        = (cfg->screen_width * 4) / 9;
+    cfg->date_w        = (cfg->screen_width * 5) / 9 + 1;
     cfg->date_right    = true;
 #else
     // Weekday right-justified, date left-justified
     cfg->weekday_x     = 0;
-    cfg->weekday_w     = 61;
+    cfg->weekday_w     = (cfg->screen_width * 3) / 7;
     cfg->weekday_right = true;
-    cfg->date_x        = 65;
-    cfg->date_w        = 79;
+    cfg->date_x        = (cfg->screen_width * 4) / 9 + 1;
+    cfg->date_w        = (cfg->screen_width * 5) / 9;
     cfg->date_right    = false;
 #endif
 }
@@ -87,9 +105,12 @@ static char line5Str[2][BUFFER_SIZE];
 // Reset the finished (now off-screen) layer back to its parked position
 void animationStoppedHandler(Animation *animation, bool finished, void *context) {
     TextLayer *current = (TextLayer *)context;
-    GRect rect = layer_get_frame(text_layer_get_layer(current));
-    rect.origin.x = layout.screen_width;
-    layer_set_frame(text_layer_get_layer(current), rect);
+    if (current) {
+        GRect rect = layer_get_frame(text_layer_get_layer(current));
+        rect.origin.x = layout.screen_width;
+        layer_set_frame(text_layer_get_layer(current), rect);
+    }
+    property_animation_destroy((PropertyAnimation *)animation);
 }
 
 // Slide current out to the left and next in from the right
@@ -97,17 +118,18 @@ void makeAnimationsForLayers(Line *line, TextLayer *current, TextLayer *next) {
     GRect to_next = layer_get_frame(text_layer_get_layer(next));
     to_next.origin.x -= layout.screen_width;
 
-    line->nextAnimation = property_animation_create_layer_frame(
-        text_layer_get_layer(next), NULL, &to_next);
+    line->nextAnimation = property_animation_create_layer_frame(text_layer_get_layer(next), NULL, &to_next);
     animation_set_duration((Animation *)line->nextAnimation, layout.anim_duration);
     animation_set_curve((Animation *)line->nextAnimation, AnimationCurveEaseOut);
+    animation_set_handlers((Animation *)line->nextAnimation, (AnimationHandlers) {
+        .stopped = animationStoppedHandler
+    }, NULL);
     animation_schedule((Animation *)line->nextAnimation);
 
     GRect to_current = layer_get_frame(text_layer_get_layer(current));
     to_current.origin.x -= layout.screen_width;
 
-    line->currentAnimation = property_animation_create_layer_frame(
-        text_layer_get_layer(current), NULL, &to_current);
+    line->currentAnimation = property_animation_create_layer_frame(text_layer_get_layer(current), NULL, &to_current);
     animation_set_duration((Animation *)line->currentAnimation, layout.anim_duration);
     animation_set_curve((Animation *)line->currentAnimation, AnimationCurveEaseOut);
     animation_set_handlers((Animation *)line->currentAnimation, (AnimationHandlers) {
@@ -123,12 +145,10 @@ void updateLineTo(Line *line, char lineStr[2][BUFFER_SIZE], char *value) {
     TextLayer *next    = (current == line->currentLayer) ? line->nextLayer : line->currentLayer;
 
     if (current == line->currentLayer) {
-        memset(lineStr[1], 0, BUFFER_SIZE);
-        memcpy(lineStr[1], value, strlen(value));
+        snprintf(lineStr[1], BUFFER_SIZE, "%s", value);
         text_layer_set_text(next, lineStr[1]);
     } else {
-        memset(lineStr[0], 0, BUFFER_SIZE);
-        memcpy(lineStr[0], value, strlen(value));
+        snprintf(lineStr[0], BUFFER_SIZE, "%s", value);
         text_layer_set_text(next, lineStr[0]);
     }
 
@@ -137,11 +157,15 @@ void updateLineTo(Line *line, char lineStr[2][BUFFER_SIZE], char *value) {
 
 // Check if a line's displayed value differs from nextValue
 bool needToUpdateLine(Line *line, char lineStr[2][BUFFER_SIZE], char *nextValue) {
-    GRect rect = layer_get_frame(text_layer_get_layer(line->currentLayer));
-    char *currentStr = (rect.origin.x == 0) ? lineStr[0] : lineStr[1];
+    char *currentStr;
+    if (line == &line4 || line == &line5) {
+        currentStr = lineStr[0];
+    } else {
+        GRect rect = layer_get_frame(text_layer_get_layer(line->currentLayer));
+        currentStr = (rect.origin.x == 0) ? lineStr[0] : lineStr[1];
+    }
 
-    return memcmp(currentStr, nextValue, strlen(nextValue)) != 0 ||
-           (strlen(nextValue) == 0 && strlen(currentStr) != 0);
+    return strcmp(currentStr, nextValue) != 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -186,13 +210,13 @@ void lineDrawLayerCallback(Layer *me, GContext *ctx) {
 
 // Update all display lines from the given time
 void display_time(struct tm *t) {
-    char textLine1[BUFFER_SIZE];
-    char textLine2[BUFFER_SIZE];
-    char textLine3[BUFFER_SIZE];
-    char textLine4[BUFFER_SIZE];
-    char textLine5[BUFFER_SIZE];
+    static char textLine1[BUFFER_SIZE];
+    static char textLine2[BUFFER_SIZE];
+    static char textLine3[BUFFER_SIZE];
+    static char textLine4[BUFFER_SIZE];
+    static char textLine5[BUFFER_SIZE];
 
-    time_to_3words(t->tm_hour, t->tm_min, textLine1, textLine2, textLine3, BUFFER_SIZE);
+    time_to_3words(t->tm_hour, t->tm_min, textLine1, textLine2, textLine3, BUFFER_SIZE, layout.screen_width < 200);
     day_of_week(t, textLine4, BUFFER_SIZE);
     date_to_string(t, textLine5, BUFFER_SIZE);
 
@@ -201,20 +225,18 @@ void display_time(struct tm *t) {
     if (needToUpdateLine(&line3, line3Str, textLine3)) updateLineTo(&line3, line3Str, textLine3);
 
     if (needToUpdateLine(&line4, line4Str, textLine4)) {
-        memset(line4Str[0], 0, BUFFER_SIZE);
-        memcpy(line4Str[0], textLine4, strlen(textLine4));
+        snprintf(line4Str[0], BUFFER_SIZE, "%s", textLine4);
         text_layer_set_text(line4.currentLayer, line4Str[0]);
     }
     if (needToUpdateLine(&line5, line5Str, textLine5)) {
-        memset(line5Str[0], 0, BUFFER_SIZE);
-        memcpy(line5Str[0], textLine5, strlen(textLine5));
+        snprintf(line5Str[0], BUFFER_SIZE, "%s", textLine5);
         text_layer_set_text(line5.currentLayer, line5Str[0]);
     }
 }
 
 // Set the initial display without animation
 void display_initial_time(struct tm *t) {
-    time_to_3words(t->tm_hour, t->tm_min, line1Str[0], line2Str[0], line3Str[0], BUFFER_SIZE);
+    time_to_3words(t->tm_hour, t->tm_min, line1Str[0], line2Str[0], line3Str[0], BUFFER_SIZE, layout.screen_width < 200);
     day_of_week(t, line4Str[0], BUFFER_SIZE);
     date_to_string(t, line5Str[0], BUFFER_SIZE);
 

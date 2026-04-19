@@ -1,9 +1,7 @@
 #include "num2words-en.h"
-#include "string.h"
+#include <string.h>
+#include <stdio.h>
 #include "config.h"
-
-#define true 1
-#define false 0
 
 // Options
 #define DEBUG false
@@ -30,7 +28,7 @@ static const char* const TEENS[] ={
   "fifteen",
   "sixteen",
   "seventeen",
-  "eightteen",
+  "eighteen",
   "nineteen"
 };
 
@@ -47,91 +45,86 @@ static const char* const TENS[] = {
   "ninety"
 };
 
-static size_t append_number(char* words, int num, short oh) {
+static size_t append_string(char *buffer, size_t length, size_t pos, const char *str) {
+  if (pos >= length - 1) return pos;
+  int written = snprintf(buffer + pos, length - pos, "%s", str);
+  return (written >= 0) ? pos + written : pos;
+}
+
+static size_t append_number(char *words, size_t length, size_t pos, int num, short oh) {
   int tens_val = num / 10 % 10;
   int ones_val = num % 10;
-
-  size_t len = 0;
-
+  size_t p = pos;
   
   if (tens_val == 1 && num != 10) {
-    strcat(words, TEENS[ones_val]);
-    return strlen(TEENS[ones_val]);
+    return append_string(words, length, p, TEENS[ones_val]);
   }
   if ((num != 0) && ((tens_val != 0) || oh)) {
-    strcat(words, TENS[tens_val]);
-    len += strlen(TENS[tens_val]);
+    p = append_string(words, length, p, TENS[tens_val]);
     if (ones_val > 0) {
-      strcat(words, " ");
-      len += 1;
+      p = append_string(words, length, p, " ");
     }
   }
 
   if (ones_val > 0 || num == 0) {
-    strcat(words, ONES[ones_val]);
-    len += strlen(ONES[ones_val]);
+    p = append_string(words, length, p, ONES[ones_val]);
   }
-  return len;
+  return p;
 }
 
-static size_t append_string(char* buffer, const size_t length, const char* str) {
-  strncat(buffer, str, length);
-
-  size_t written = strlen(str);
-  return (length > written) ? written : length;
-}
-
-
-void time_to_words(int hours, int minutes, char* words, size_t length) {
-
-  size_t remaining = length;
-  memset(words, 0, length);
+void time_to_words(int hours, int minutes, char *words, size_t length) {
+  size_t pos = 0;
 
   if (hours == 0 || hours == 12) {
-    remaining -= append_string(words, remaining, TEENS[2]);
+    pos = append_string(words, length, pos, TEENS[2]);
   } else {
-    remaining -= append_number(words, hours % 12, false);
+    pos = append_number(words, length, pos, hours % 12, false);
   }
 
-  remaining -= append_string(words, remaining, " ");
-  remaining -= append_number(words, minutes, TimeRenderOh);
-  remaining -= append_string(words, remaining, " ");
+  pos = append_string(words, length, pos, " ");
+  pos = append_number(words, length, pos, minutes, TimeRenderOh);
+  pos = append_string(words, length, pos, " ");
 }
 
-void time_to_3words(int hours, int minutes, char *line1, char *line2, char *line3, size_t length)
-{
-	char value[length];
-	time_to_words(hours, minutes, value, length);
-	
-	memset(line1, 0, length);
-	memset(line2, 0, length);
-	memset(line3, 0, length);
-	
-	char *start = value;
-	char *pch = strstr (start, " ");
-	while (pch != NULL) {
-		if (line1[0] == 0) {
-			memcpy(line1, start, pch-start);
-		}  else if (line2[0] == 0) {
-			memcpy(line2, start, pch-start);
-		} else if (line3[0] == 0) {
-			memcpy(line3, start, pch-start);
-		}
-		start += pch-start+1;
-		pch = strstr(start, " ");
-	}
-	
-	// Truncate long teen values
-        if (strstr(line2, "teen") != 0) {
-	  if (!((strstr(line2, "thir") != 0) ||
-                (strstr(line2, "fif") != 0) ||
-                (strstr(line2, "six") != 0))) {
-            char *pch = strstr(line2, "teen");
-            if (pch) {
-              memcpy(line3, pch, 4);
-              pch[0] = 0;
-            }
-          }       
+void time_to_3words(int hours, int minutes, char *line1, char *line2, char *line3, size_t length, bool split_teens) {
+  static char value[BUFFER_SIZE];
+  time_to_words(hours, minutes, value, length);
+
+  memset(line1, 0, length);
+  memset(line2, 0, length);
+  memset(line3, 0, length);
+
+  char *start = value;
+  char *pch = strstr(start, " ");
+  while (pch != NULL) {
+    size_t word_len = (size_t)(pch - start);
+    if (line1[0] == 0) {
+      memcpy(line1, start, word_len);
+    } else if (line2[0] == 0) {
+      memcpy(line2, start, word_len);
+    } else if (line3[0] == 0) {
+      memcpy(line3, start, word_len);
+    }
+    start = pch + 1;
+    pch = strstr(start, " ");
+  }
+
+  // On narrow screens, split long teen words (e.g. "seventeen" → "seven"/"teen")
+  if (split_teens && strstr(line2, "teen") != 0) {
+    if (!((strstr(line2, "thir") != 0) ||
+          (strstr(line2, "fif")  != 0) ||
+          (strstr(line2, "six")  != 0))) {
+      char *teen = strstr(line2, "teen");
+      if (teen) {
+        if (strcmp(line2, "eighteen") == 0) {
+          // Special case: split "eighteen" into "eight" and "teen"
+          memcpy(line3, teen, 4);
+          line2[5] = 0; 
+        } else {
+          memcpy(line3, teen, 4);
+          teen[0] = 0;
         }
+      }
+    }
+  }
 }
-
