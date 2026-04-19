@@ -1,7 +1,6 @@
 # Pebble Specific Ignores #
 ###########################
 waf
-wscript
 build
 tools
 pebble_app.ld
@@ -49,3 +48,4 @@ Icon?
 ehthumbs.db
 Thumbs.db
 
+.claude/settings.local.json

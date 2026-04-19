@@ -1,7 +1,7 @@
 ////////////////////////////////////
 // Watch Face Variants
 #define TimeRenderOh         true
-#define DateSeparatorLine    true
+#define DateSeparatorLine    false
 #define DateOutsideJustified true
 #define DateFormatUS         true
 ////////////////////////////////////
