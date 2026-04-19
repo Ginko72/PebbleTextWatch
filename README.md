@@ -18,7 +18,5 @@ Versions:
 [4] This is version [1] with the date representation changed to DD.MM for non-US users.  Thanks to James Wigglesworth!
 
 
-Compiled build of version [3]: https://dl.dropboxusercontent.com/u/11537951/text-watch-date-line.pbw
-
 Screenshot:  
 ![Text watch screenshot](http://i.imgur.com/cQBVK5c.jpg)
