@@ -6,6 +6,51 @@
 #define DEBUG false
 #define BUFFER_SIZE 44
 
+// ---------------------------------------------------------------------------
+// Layout
+// ---------------------------------------------------------------------------
+
+static void layout_config_init(LayoutConfig *cfg, GRect bounds) {
+    cfg->screen_width    = bounds.size.w;
+    cfg->line_height     = 50;
+    cfg->line_spacing    = 37;
+    cfg->line1_y         = 0;
+    cfg->line2_y         = cfg->line_spacing;
+    cfg->line3_y         = 2 * cfg->line_spacing;
+    cfg->weekday_y       = bounds.size.h - 45;   // 45px up from bottom
+    cfg->date_y          = cfg->weekday_y + 8;
+    cfg->sep_y           = bounds.size.h - 40;   // 40px up from bottom
+    cfg->sep_inset       = 10;
+    cfg->anim_duration   = 400;
+    cfg->time_bold_font  = FONT_KEY_BITHAM_42_BOLD;
+    cfg->time_light_font = FONT_KEY_BITHAM_42_LIGHT;
+    cfg->date_font       = FONT_KEY_BITHAM_34_MEDIUM_NUMBERS;
+
+#if DateOutsideJustified
+    // Weekday left-justified, date right-justified
+    cfg->weekday_x     = 0;
+    cfg->weekday_w     = 72;
+    cfg->weekday_right = false;
+    cfg->date_x        = 64;
+    cfg->date_w        = 79;
+    cfg->date_right    = true;
+#else
+    // Weekday right-justified, date left-justified
+    cfg->weekday_x     = 0;
+    cfg->weekday_w     = 61;
+    cfg->weekday_right = true;
+    cfg->date_x        = 65;
+    cfg->date_w        = 79;
+    cfg->date_right    = false;
+#endif
+}
+
+static LayoutConfig layout;
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+
 static Window *window;
 
 typedef struct {
@@ -35,29 +80,35 @@ static char line3Str[2][BUFFER_SIZE];
 static char line4Str[2][BUFFER_SIZE];
 static char line5Str[2][BUFFER_SIZE];
 
-// Reset off-screen layer position after animation completes
+// ---------------------------------------------------------------------------
+// Animation
+// ---------------------------------------------------------------------------
+
+// Reset the finished (now off-screen) layer back to its parked position
 void animationStoppedHandler(Animation *animation, bool finished, void *context) {
     TextLayer *current = (TextLayer *)context;
     GRect rect = layer_get_frame(text_layer_get_layer(current));
-    rect.origin.x = 144;
+    rect.origin.x = layout.screen_width;
     layer_set_frame(text_layer_get_layer(current), rect);
 }
 
-// Animate a line transition by sliding current out and next in
+// Slide current out to the left and next in from the right
 void makeAnimationsForLayers(Line *line, TextLayer *current, TextLayer *next) {
-    GRect rect = layer_get_frame(text_layer_get_layer(next));
-    rect.origin.x -= 144;
+    GRect to_next = layer_get_frame(text_layer_get_layer(next));
+    to_next.origin.x -= layout.screen_width;
 
-    line->nextAnimation = property_animation_create_layer_frame(text_layer_get_layer(next), NULL, &rect);
-    animation_set_duration((Animation *)line->nextAnimation, 400);
+    line->nextAnimation = property_animation_create_layer_frame(
+        text_layer_get_layer(next), NULL, &to_next);
+    animation_set_duration((Animation *)line->nextAnimation, layout.anim_duration);
     animation_set_curve((Animation *)line->nextAnimation, AnimationCurveEaseOut);
     animation_schedule((Animation *)line->nextAnimation);
 
-    GRect rect2 = layer_get_frame(text_layer_get_layer(current));
-    rect2.origin.x -= 144;
+    GRect to_current = layer_get_frame(text_layer_get_layer(current));
+    to_current.origin.x -= layout.screen_width;
 
-    line->currentAnimation = property_animation_create_layer_frame(text_layer_get_layer(current), NULL, &rect2);
-    animation_set_duration((Animation *)line->currentAnimation, 400);
+    line->currentAnimation = property_animation_create_layer_frame(
+        text_layer_get_layer(current), NULL, &to_current);
+    animation_set_duration((Animation *)line->currentAnimation, layout.anim_duration);
     animation_set_curve((Animation *)line->currentAnimation, AnimationCurveEaseOut);
     animation_set_handlers((Animation *)line->currentAnimation, (AnimationHandlers) {
         .stopped = animationStoppedHandler
@@ -67,11 +118,9 @@ void makeAnimationsForLayers(Line *line, TextLayer *current, TextLayer *next) {
 
 // Update a line with a sliding animation to the new value
 void updateLineTo(Line *line, char lineStr[2][BUFFER_SIZE], char *value) {
-    TextLayer *next, *current;
-
     GRect rect = layer_get_frame(text_layer_get_layer(line->currentLayer));
-    current = (rect.origin.x == 0) ? line->currentLayer : line->nextLayer;
-    next = (current == line->currentLayer) ? line->nextLayer : line->currentLayer;
+    TextLayer *current = (rect.origin.x == 0) ? line->currentLayer : line->nextLayer;
+    TextLayer *next    = (current == line->currentLayer) ? line->nextLayer : line->currentLayer;
 
     if (current == line->currentLayer) {
         memset(lineStr[1], 0, BUFFER_SIZE);
@@ -95,6 +144,10 @@ bool needToUpdateLine(Line *line, char lineStr[2][BUFFER_SIZE], char *nextValue)
            (strlen(nextValue) == 0 && strlen(currentStr) != 0);
 }
 
+// ---------------------------------------------------------------------------
+// Date / time formatting
+// ---------------------------------------------------------------------------
+
 // Format the date as a displayable string, stripping leading zeros
 void date_to_string(struct tm *t, char *line, size_t length) {
     memset(line, 0, length);
@@ -114,15 +167,20 @@ void day_of_week(struct tm *t, char *line, size_t length) {
 #endif
 }
 
+// ---------------------------------------------------------------------------
+// Drawing
+// ---------------------------------------------------------------------------
+
 #if DateSeparatorLine
 void lineDrawLayerCallback(Layer *me, GContext *ctx) {
-    (void)me;
-    int16_t w = layer_get_bounds(window_get_root_layer(window)).size.w;
+    GRect bounds = layer_get_bounds(me);
     graphics_context_set_stroke_color(ctx, GColorWhite);
-    graphics_draw_line(ctx, GPoint(lineInset, lineVOffset),
-                            GPoint(w - lineInset, lineVOffset));
-    graphics_draw_line(ctx, GPoint(lineInset, lineVOffset + 1),
-                            GPoint(w - lineInset, lineVOffset + 1));
+    graphics_draw_line(ctx,
+        GPoint(layout.sep_inset, layout.sep_y),
+        GPoint(bounds.size.w - layout.sep_inset, layout.sep_y));
+    graphics_draw_line(ctx,
+        GPoint(layout.sep_inset, layout.sep_y + 1),
+        GPoint(bounds.size.w - layout.sep_inset, layout.sep_y + 1));
 }
 #endif
 
@@ -167,30 +225,20 @@ void display_initial_time(struct tm *t) {
     text_layer_set_text(line5.currentLayer, line5Str[0]);
 }
 
-static void configureBoldLayer(TextLayer *textlayer, bool right) {
-    text_layer_set_font(textlayer, fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD));
-    text_layer_set_text_color(textlayer, GColorWhite);
-    text_layer_set_background_color(textlayer, GColorClear);
-    text_layer_set_text_alignment(textlayer, right ? GTextAlignmentRight : GTextAlignmentLeft);
+static void configure_text_layer(TextLayer *layer, const char *font_key, bool right) {
+    text_layer_set_font(layer, fonts_get_system_font(font_key));
+    text_layer_set_text_color(layer, GColorWhite);
+    text_layer_set_background_color(layer, GColorClear);
+    text_layer_set_text_alignment(layer, right ? GTextAlignmentRight : GTextAlignmentLeft);
 }
 
-static void configureLightLayer(TextLayer *textlayer, bool right) {
-    text_layer_set_font(textlayer, fonts_get_system_font(FONT_KEY_BITHAM_42_LIGHT));
-    text_layer_set_text_color(textlayer, GColorWhite);
-    text_layer_set_background_color(textlayer, GColorClear);
-    text_layer_set_text_alignment(textlayer, right ? GTextAlignmentRight : GTextAlignmentLeft);
-}
-
-static void configureDateLayer(TextLayer *textlayer, bool right) {
-    text_layer_set_font(textlayer, fonts_get_system_font(FONT_KEY_BITHAM_34_MEDIUM_NUMBERS));
-    text_layer_set_text_color(textlayer, GColorWhite);
-    text_layer_set_background_color(textlayer, GColorClear);
-    text_layer_set_text_alignment(textlayer, right ? GTextAlignmentRight : GTextAlignmentLeft);
-}
+// ---------------------------------------------------------------------------
+// Debug
+// ---------------------------------------------------------------------------
 
 /**
- * Debug handlers: enable DEBUG macro above to turn the watchface into a standard app
- * and step through time with the up/down buttons.
+ * Enable DEBUG above to turn the watchface into a standard app and step
+ * through time with the up/down buttons.
  */
 #if DEBUG
 
@@ -219,6 +267,10 @@ static void click_config_provider(void *context) {
 
 #endif
 
+// ---------------------------------------------------------------------------
+// App lifecycle
+// ---------------------------------------------------------------------------
+
 static void handle_minute_tick(struct tm *tick_time, TimeUnits units_changed) {
     display_time(tick_time);
 }
@@ -229,39 +281,35 @@ static void handle_init(void) {
     window_set_background_color(window, GColorBlack);
 
     Layer *root_layer = window_get_root_layer(window);
+    layout_config_init(&layout, layer_get_bounds(root_layer));
 
-    // Line 1 — bold
-    line1.currentLayer = text_layer_create(GRect(0,   TextLineVOffset,      144, 50));
-    line1.nextLayer    = text_layer_create(GRect(144, TextLineVOffset,      144, 50));
-    configureBoldLayer(line1.currentLayer, false);
-    configureBoldLayer(line1.nextLayer,    false);
+    // Time rows — current layer starts on-screen (x=0), next parks off-screen right
+    line1.currentLayer = text_layer_create(GRect(0,                   layout.line1_y, layout.screen_width, layout.line_height));
+    line1.nextLayer    = text_layer_create(GRect(layout.screen_width, layout.line1_y, layout.screen_width, layout.line_height));
+    configure_text_layer(line1.currentLayer, layout.time_bold_font, false);
+    configure_text_layer(line1.nextLayer,    layout.time_bold_font, false);
 
-    // Line 2 — light
-    line2.currentLayer = text_layer_create(GRect(0,   37 + TextLineVOffset, 144, 50));
-    line2.nextLayer    = text_layer_create(GRect(144, 37 + TextLineVOffset, 144, 50));
-    configureLightLayer(line2.currentLayer, false);
-    configureLightLayer(line2.nextLayer,    false);
+    line2.currentLayer = text_layer_create(GRect(0,                   layout.line2_y, layout.screen_width, layout.line_height));
+    line2.nextLayer    = text_layer_create(GRect(layout.screen_width, layout.line2_y, layout.screen_width, layout.line_height));
+    configure_text_layer(line2.currentLayer, layout.time_light_font, false);
+    configure_text_layer(line2.nextLayer,    layout.time_light_font, false);
 
-    // Line 3 — light
-    line3.currentLayer = text_layer_create(GRect(0,   74 + TextLineVOffset, 144, 50));
-    line3.nextLayer    = text_layer_create(GRect(144, 74 + TextLineVOffset, 144, 50));
-    configureLightLayer(line3.currentLayer, false);
-    configureLightLayer(line3.nextLayer,    false);
+    line3.currentLayer = text_layer_create(GRect(0,                   layout.line3_y, layout.screen_width, layout.line_height));
+    line3.nextLayer    = text_layer_create(GRect(layout.screen_width, layout.line3_y, layout.screen_width, layout.line_height));
+    configure_text_layer(line3.currentLayer, layout.time_light_font, false);
+    configure_text_layer(line3.nextLayer,    layout.time_light_font, false);
 
 #if DateSeparatorLine
     lineDrawLayer = layer_create(layer_get_bounds(root_layer));
     layer_set_update_proc(lineDrawLayer, lineDrawLayerCallback);
 #endif
 
-    // Line 4 — weekday
-    line4.currentLayer = text_layer_create(
-        GRect(WeekdayHStart, DateVOffset, WeekdayHStop - WeekdayHStart, 50));
-    configureLightLayer(line4.currentLayer, WeekdayRightJust);
+    // Weekday and date rows (no animation — static layers only)
+    line4.currentLayer = text_layer_create(GRect(layout.weekday_x, layout.weekday_y, layout.weekday_w, layout.line_height));
+    configure_text_layer(line4.currentLayer, layout.time_light_font, layout.weekday_right);
 
-    // Line 5 — date
-    line5.currentLayer = text_layer_create(
-        GRect(DateHStart, 8 + DateVOffset, DateHStop - DateHStart, 50));
-    configureDateLayer(line5.currentLayer, DateRightJust);
+    line5.currentLayer = text_layer_create(GRect(layout.date_x, layout.date_y, layout.date_w, layout.line_height));
+    configure_text_layer(line5.currentLayer, layout.date_font, layout.date_right);
 
     // Show current time immediately
     time_t now = time(NULL);
