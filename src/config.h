@@ -3,6 +3,10 @@
 #include <stdbool.h>
 
 ////////////////////////////////////
+// Buffer size for all word/date string buffers
+#define BUFFER_SIZE 44
+
+////////////////////////////////////
 // Watch Face Variants
 #define TimeRenderOh         true
 #define DateSeparatorLine    false
