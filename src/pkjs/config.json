@@ -26,5 +26,9 @@
     "messageKey": "DateFormatUS",
     "label": "US date format (MM.DD)",
     "defaultValue": true
+  },
+  {
+    "type": "submit",
+    "defaultValue": "Save Settings"
   }
 ]
