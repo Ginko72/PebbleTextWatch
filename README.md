@@ -22,4 +22,3 @@ Compiled build of version [3]: https://dl.dropboxusercontent.com/u/11537951/text
 
 Screenshot:  
 ![Text watch screenshot](http://i.imgur.com/cQBVK5c.jpg)
-![Text watch screenshot](https://dl.dropboxusercontent.com/u/1636596/IMG_20130423_140647.jpg)
