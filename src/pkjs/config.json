@@ -1,0 +1,34 @@
+[
+  {
+    "type": "heading",
+    "defaultValue": "Text Watch Settings"
+  },
+  {
+    "type": "toggle",
+    "messageKey": "TimeRenderOh",
+    "label": "Render \"oh\" for zero minutes",
+    "defaultValue": true
+  },
+  {
+    "type": "toggle",
+    "messageKey": "DateSeparatorLine",
+    "label": "Date separator line",
+    "defaultValue": false
+  },
+  {
+    "type": "toggle",
+    "messageKey": "DateOutsideJustified",
+    "label": "Outside-justified date/day",
+    "defaultValue": true
+  },
+  {
+    "type": "toggle",
+    "messageKey": "DateFormatUS",
+    "label": "US date format (MM.DD)",
+    "defaultValue": true
+  },
+  {
+    "type": "submit",
+    "defaultValue": "Save Settings"
+  }
+]
